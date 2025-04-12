@@ -1,0 +1,46 @@
+services:
+  # Cape Fear ACA-Py Controller (using pre-built image)
+  api:
+    image: ghcr.io/digicred-holdings/cape-fear-redis-no-tls:latest
+    container_name: cape-fear-redis-no-tls
+    ports:
+      - "${PORT:-3008}:${PORT:-3008}"
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - WORKFLOW_DB_HOST=postgres
+      - WORKFLOW_DB_PORT=5432
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:16
+    container_name: nas-veridid-workflow-db
+    environment:
+      - POSTGRES_PASSWORD=${WORKFLOW_DB_PASSWORD:-password123}
+      - POSTGRES_DB=${WORKFLOW_DB_NAME:-cape_fear_workflow_db}
+    ports:
+      - "${WORKFLOW_DB_PORT_EXTERNAL:-5435}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Redis cache
+  redis:
+    image: redis:latest
+    container_name: cape-fear-sis-redis-1
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-super-secret-password}
+    ports:
+      - "${REDIS_PORT_EXTERNAL:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
